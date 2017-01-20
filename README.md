@@ -1,7 +1,7 @@
 # EasyTask
 基于swoole的任务队列
 可多进程并发执行, 主进程监听多个任务进程, 任务进程挂掉会被主进程自动拉起
-## examles
+## example
 
 启动任务 php src/start.php
 
