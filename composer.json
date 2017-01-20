@@ -1,0 +1,22 @@
+{
+    "name": "ruziyi/EasyTask",
+    "description": "任务队列",
+    "keywords": [
+        "task",
+        "multi process"
+    ],
+    "license": "MIT",
+    "authors": [{
+        "name": "ruziyi",
+        "email": "ruziyi@gmail.com"
+    }],
+    "require": {
+        "php": ">=5.5.0",
+        "ext-swoole": ">1.8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "EasyTask\\": "src/"
+        }
+    }
+}
