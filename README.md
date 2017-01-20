@@ -9,9 +9,14 @@
 ```php
 include 'Loader.php';
 
-$task = (new EasyTask\EchoTask("hehe\n"));//立即执行
-$task = (new EasyTask\EchoTask("hehe\n"))->after(1000);//延迟1000ms立即执行
-$task = (new EasyTask\EchoTask("hehe\n"))->every(1000, 5);//每1000ms执行一次, 共执行5次。不设置次数, 则一直重复执行
-$task = (new EasyTask\EchoTask("hehe\n"))->after(1000)->every(1000, 5);//1000ms后, 每1000ms执行一次, 共执行5次。不设置次数, 则一直重复执行
+//立即执行
+$task = (new EasyTask\EchoTask("hehe\n"));
+//延迟1000ms立即执行
+$task = (new EasyTask\EchoTask("hehe\n"))->after(1000);
+//每1000ms执行一次, 共执行5次。不设置次数, 则一直重复执行
+$task = (new EasyTask\EchoTask("hehe\n"))->every(1000, 5);
+//1000ms后, 每1000ms执行一次, 共执行5次。不设置次数, 则一直重复执行
+$task = (new EasyTask\EchoTask("hehe\n"))->after(1000)->every(1000, 5);
+
 (new EasyTask\queue\RedisQueue)->putTask($task);
 ```
