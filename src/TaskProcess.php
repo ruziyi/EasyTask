@@ -7,15 +7,24 @@ class TaskProcess
 {
     public $process_list = [];
     public $process_use = [];
-    private $min_worker_num = 1;
-    private $max_worker_num = 2;
     private $current_num;
+    private $config = [
+        'listen_queue' => 'task1',//监听队列
+        'min_worker_num' => 1,//初始任务进程数
+        'max_worker_num' => 2,//最大任务进程数
+    ];
 
-    public function __construct($debug = false) 
+    public function __construct($debug = false, $config = []) 
     {
         if (!$debug) {
             swoole_process::daemon();
         }
+        $this->set($config);
+    }
+
+    public function set($config)
+    {
+        $this->config = array_merge($this->config, $config);
     }
 
     public function run()
@@ -44,7 +53,7 @@ class TaskProcess
             }
         });
 
-        for ($i = 0; $i < $this->min_worker_num; $i++) {
+        for ($i = 0; $i < $this->config['min_worker_num']; $i++) {
             $process = new swoole_process([$this, 'task_run'], false, 2);
             $pid = $process->start();
             $this->process_list[$pid] = $process;
@@ -103,7 +112,7 @@ class TaskProcess
                 return $this->process_list[$k];
             }
         }
-        if ($this->current_num < $this->max_worker_num) {
+        if ($this->current_num < $this->config['max_worker_num']) {
             $process = new swoole_process([$this, 'task_run'], false, 2);
             $pid = $process->start();
             $this->process_list[$pid] = $process;
