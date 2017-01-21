@@ -13,7 +13,6 @@ class TaskProcess
 
     public function __construct($debug = false) 
     {
-            var_dump($debug); exit;
         if (!$debug) {
             swoole_process::daemon();
         }

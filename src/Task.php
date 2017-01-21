@@ -11,12 +11,11 @@ class Task
     {
         $after = $this->after;
         $delay = $after - floor(microtime(true) * 1000) + $this->create_at;
+
         if ($delay <= 0) {
             $this->fire();
         } else {
-            // $max_delay = 86400000;
-            var_dump($delay);
-            $max_delay = 200;
+            $max_delay = 86400000;
             if ($delay > $max_delay) {
                 swoole_timer_after($max_delay, function(){
                     $this->trigger();

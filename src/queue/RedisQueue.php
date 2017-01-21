@@ -1,5 +1,6 @@
 <?php
 namespace EasyTask\queue;
+
 use Redis;
 
 class RedisQueue implements QueueInterface
@@ -33,7 +34,7 @@ class RedisQueue implements QueueInterface
             trigger_error('connect redis-server failed');
         }
         $this->redis->rpush('task1', $task);
-
+        $this->redis->close();
     }
 
     public function putFailedTask($task)
@@ -46,5 +47,6 @@ class RedisQueue implements QueueInterface
             trigger_error('connect redis-server failed');
         }
         $this->redis->rpush('task1-failed', $task);
+        $this->redis->close();
     }
 }
