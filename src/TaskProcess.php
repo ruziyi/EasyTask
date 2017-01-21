@@ -11,6 +11,14 @@ class TaskProcess
     private $max_worker_num = 2;
     private $current_num;
 
+    public function __construct($debug = false) 
+    {
+            var_dump($debug); exit;
+        if (!$debug) {
+            swoole_process::daemon();
+        }
+    }
+
     public function run()
     {
         //监听子进程退出信号

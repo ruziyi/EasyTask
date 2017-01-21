@@ -10,13 +10,22 @@ class Task
     public function trigger()
     {
         $after = $this->after;
-
-        if (floor(microtime(true) * 1000) - $this->create_at >= $after) {
+        $delay = $after - floor(microtime(true) * 1000) + $this->create_at;
+        if ($delay <= 0) {
             $this->fire();
         } else {
-            swoole_timer_after($after, function () {
-                $this->fire();
-            });
+            // $max_delay = 86400000;
+            var_dump($delay);
+            $max_delay = 200;
+            if ($delay > $max_delay) {
+                swoole_timer_after($max_delay, function(){
+                    $this->trigger();
+                });
+            } else {
+                swoole_timer_after($delay, function () {
+                    $this->fire();
+                });
+            };
         }
     }
 
