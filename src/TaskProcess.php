@@ -1,25 +1,31 @@
 <?php
 namespace EasyTask;
+
 use swoole_process;
-use Redis;
 
 class TaskProcess
 {
     public $process_list = [];
     public $process_use = [];
     private $current_num;
+    private $queue;
     private $config = [
-        'listen_queue' => 'task1',//监听队列
-        'min_worker_num' => 1,//初始任务进程数
-        'max_worker_num' => 2,//最大任务进程数
+        'listen_queue' => 'task1', //监听队列
+        'min_worker_num' => 1, //初始任务进程数
+        'max_worker_num' => 2, //最大任务进程数
+        'queue' => 'redis',
     ];
 
-    public function __construct($debug = false, $config = []) 
+    public function __construct($debug = false, $config = [])
     {
         if (!$debug) {
             swoole_process::daemon();
         }
         $this->set($config);
+
+        $queue_class = $this->config['queue'];
+        $queue_class = "\\EasyTask\\queue\\" . ucfirst($queue_class) . 'Queue';
+        $this->queue = new $queue_class;
     }
 
     public function set($config)
@@ -63,45 +69,24 @@ class TaskProcess
 
         foreach ($this->process_list as $process) {
             swoole_event_add($process->pipe, function ($pipe) use ($process) {
-                $data = $process->read();
-                $this->process_use[$process->pid] = 0;
-                if ($data != 1) {
-                    $redis = new Redis();
-                    $redis->connect('127.0.0.1', 6379);
-                    $redis->rpush('task1-failed', $data);
-                    $redis->close();
-                }
+                $this->process_use[$process->pid] = 0; //收到任务进程数据， 设为可用
             });
         }
 
         swoole_timer_tick(20, function () {
-            $redis = new Redis();
-            $redis->connect('127.0.0.1', 6379);
-            $task = $redis->lpop('task1-failed');
-            if (!$task) {
-                $ret = $redis->blpop('task1', 10);
-            }
-            if (!empty($ret)) {
-                $task = $ret[1];
+            $task = $this->queue->getTask();
+            
+            if ($task) {
                 $free_process = $this->getFreeProcess();
 
                 if ($free_process) {
                     $free_process->write($task);
                 } else {
-                    $ret1 = $redis->lpush('task1', $task);
+                    $this->queue->putTask($task, 'l');
                 }
             }
-            $redis->close();
         });
 
-    }
-
-    public function addTask($task)
-    {
-        $redis = new Redis();
-        $redis->connect('127.0.0.1');
-        $redis->rpush('task1_wait', $task);
-        $redis->close();
     }
 
     private function getFreeProcess()
@@ -119,8 +104,6 @@ class TaskProcess
             $this->process_use[$pid] = 1;
             $this->current_num++;
             swoole_event_add($process->pipe, function ($pipe) use ($process) {
-                $data = $process->read();
-
                 $this->process_use[$process->pid] = 0;
             });
             return $process;
@@ -139,12 +122,14 @@ class TaskProcess
             try {
                 $task = unserialize($data);
                 $task->trigger();
-                $worker->write(1);
             } catch (Exception $e) {
-                //失败将任务回传给主进程
-                $worker->write($data);
+                //失败压入失败队列 进行重试
+                $task->retry--;
+                if ($task->retry > 0) {
+                    $this->queue->putFailedTask($task);
+                }
             }
+            $worker->write(1);
         });
     }
 }
-
