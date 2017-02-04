@@ -1,6 +1,6 @@
 {
-    "name": "ruziyi/EasyTask",
-    "description": "任务队列",
+    "name": "ruziyi/easy-task",
+    "description": "a library for async task",
     "keywords": [
         "task",
         "multi process"
