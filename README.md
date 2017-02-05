@@ -2,7 +2,8 @@
 基于swoole的任务队列
 可多进程并发执行, 主进程监听多个任务进程, 任务进程挂掉会被主进程自动拉起
 ##install
-composer require ruziyi/easy-task:dev-master
+使用composer: composer require ruziyi/easy-task:dev-master
+手动引入: include include 'Loader.php';
 ## example
 创建task, 把要实现的业务逻辑放到run方法里
 ```php
@@ -39,8 +40,6 @@ php server.php
 ```
 ### 例子
 ```php
-include 'Loader.php';
-
 //立即执行
 $task = (new EasyTask\EchoTask("hehe\n"));
 //3分钟后执行
