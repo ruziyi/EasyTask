@@ -7,6 +7,14 @@ class RedisQueue implements QueueInterface
 {
     private $connected = 0;
     private $redis;
+    private $host;
+    private $port;
+
+    public function __construct($host = '127.0.0.1', $port = 6379)
+    {
+        $this->host = $host;
+        $this->port = $port;
+    }
 
     public function getTask()
     {
@@ -24,7 +32,7 @@ class RedisQueue implements QueueInterface
     {
         if (!$this->connected) {
             $this->redis = new Redis();
-            $ret = $this->redis->pconnect('127.0.0.1');
+            $ret = $this->redis->pconnect($this->host, $this->port);
             if (!$ret) {
                 trigger_error('connect redis-server failed');
             }

@@ -13,7 +13,11 @@ class TaskProcess
         'listen_queue' => 'task1', //监听队列
         'min_worker_num' => 1, //初始任务进程数
         'max_worker_num' => 2, //最大任务进程数
-        'queue' => 'redis',
+        'queue' => [
+            'type' => 'redis',
+            'host' => '127.0.0.1',
+            'port' => 6379,
+        ],
     ];
 
     public function __construct($debug = false, $config = [])
@@ -23,9 +27,9 @@ class TaskProcess
         }
         $this->set($config);
 
-        $queue_class = $this->config['queue'];
+        $queue_class = $this->config['queue']['type'];
         $queue_class = "\\EasyTask\\queue\\" . ucfirst($queue_class) . 'Queue';
-        $this->queue = new $queue_class;
+        $this->queue = new $queue_class($this->config['queue']['host'], $this->config['queue']['port']);
     }
 
     public function set($config)
@@ -75,7 +79,7 @@ class TaskProcess
 
         swoole_timer_tick(20, function () {
             $task = $this->queue->getTask();
-            
+
             if ($task) {
                 $free_process = $this->getFreeProcess();
 

@@ -1,5 +1,6 @@
 <?php
 include 'Loader.php';
-
-$task = (new EasyTask\EchoTask("hehe\n"))->after(1000)->every(200, 5);
+date_default_timezone_set('PRC');
+$task = (new EasyTask\EchoTask("hehe"))->after(1000)->every(1000, 5);
+// $task->trigger();
 (new EasyTask\queue\RedisQueue)->putTask($task);
