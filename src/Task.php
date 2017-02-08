@@ -47,6 +47,8 @@ class Task
     {
         if (!is_int($time)) {
             $time = strtotime($time) * 1000;
+        } else {
+            $time = $time * 1000;
         }
         $this->after = $time - $this->create_at;
         return $this;
