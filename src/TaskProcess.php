@@ -91,7 +91,7 @@ class TaskProcess
                 if ($free_process) {
                     $free_process->write($task);
                 } else {
-                    $this->queue->putTask($task, 'l');
+                    $this->queue->putTask($task, 'r');
                 }
             }
         });
@@ -131,6 +131,7 @@ class TaskProcess
             try {
                 $task = unserialize($data);
                 $task->trigger();
+                $this->queue->remBak($data);
             } catch (Exception $e) {
                 //失败压入失败队列 进行重试
                 $task->retry--;

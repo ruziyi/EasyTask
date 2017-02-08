@@ -21,11 +21,16 @@ class RedisQueue implements QueueInterface
         $redis = $this->getRedis();
         $task = $redis->lpop('task1-failed');
         if (!$task) {
-            $task = $redis->blpop('task1', 10);
+            $task = $redis->bRpopLpush('task1', 'task1-backup', 10);
         }
-        $task = $task ? $task[1] : null;
         unset($redis);
         return $task;
+    }
+
+    public function remBak($task)
+    {
+        $redis = $this->getRedis();
+        $redis->lrem('task1-backup', $task, 1);
     }
 
     private function getRedis()
@@ -41,7 +46,7 @@ class RedisQueue implements QueueInterface
         return $this->redis;
     }
 
-    public function putTask($task, $type="r")
+    public function putTask($task, $type="l")
     {
         if (!is_string($task)) {
             $task = serialize($task);
