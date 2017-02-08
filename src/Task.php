@@ -6,7 +6,7 @@ class Task
     protected $create_at;
     protected $every = 0;
     protected $retry = 3;//失败重试次数
-    public $exec_num = 1;
+    public $exec_num = 0;
 
     public function trigger()
     {
