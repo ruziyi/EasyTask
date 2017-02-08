@@ -9,6 +9,8 @@ class TaskProcess
     public $process_use = [];
     private $current_num;
     private $queue;
+    private $log;
+
     private $config = [
         'listen_queue' => 'task1', //监听队列
         'min_worker_num' => 1, //初始任务进程数
@@ -18,6 +20,7 @@ class TaskProcess
             'host' => '127.0.0.1',
             'port' => 6379,
         ],
+        'log_path' => './log.txt',
     ];
 
     public function __construct($debug = false, $config = [])
@@ -30,6 +33,8 @@ class TaskProcess
         $queue_class = $this->config['queue']['type'];
         $queue_class = "\\EasyTask\\queue\\" . ucfirst($queue_class) . 'Queue';
         $this->queue = new $queue_class($this->config['queue']['host'], $this->config['queue']['port']);
+
+        $this->log = new \EasyTask\Log($this->config['log_path']);
     }
 
     public function set($config)
@@ -42,7 +47,7 @@ class TaskProcess
         //监听子进程退出信号
         swoole_process::signal(SIGCHLD, function ($sig) {
             while ($ret = swoole_process::wait(false)) {
-                echo "{$ret['pid']} exit";
+                $this->log->write("{$ret['pid']} exit");
                 $process = $this->process_list[$ret['pid']];
                 unset($this->process_list[$ret['pid']], $this->process_use[$ret['pid']]);
                 swoole_event_del($process->pipe);
@@ -56,9 +61,9 @@ class TaskProcess
                         $data = $process->read();
                         $this->process_use[$process->pid] = 0;
                     });
-                    echo "process {$pid} start";
+                    $this->log->write("process {$pid} start");
                 } else {
-                    echo "restart process failed";
+                    $this->log->write("restart process failed");
                 }
             }
         });
@@ -131,6 +136,8 @@ class TaskProcess
                 $task->retry--;
                 if ($task->retry > 0) {
                     $this->queue->putFailedTask($task);
+                } else {
+                    $this->log->write(serialize($task) . ' failed', 'error');
                 }
             }
             $worker->write(1);
