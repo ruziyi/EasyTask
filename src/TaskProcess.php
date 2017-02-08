@@ -42,12 +42,24 @@ class TaskProcess
         $this->config = array_merge($this->config, $config);
     }
 
+    public function moveBakToQueue()
+    {
+        while (true) {
+            $redis = $this->queue->getRedis();
+            $task = $redis->rPopLPush('task1-backup', 'task1');
+            if (!$task) {
+                break;
+            }
+        }
+    }
     public function run()
     {
+        //将未执行的进程移到正式队列
+        $this->moveBakToQueue();
         //监听子进程退出信号
         swoole_process::signal(SIGCHLD, function ($sig) {
             while ($ret = swoole_process::wait(false)) {
-                $this->log->write("{$ret['pid']} exit");
+                $this->log->write("{$ret['pid']} exit", 'error');
                 $process = $this->process_list[$ret['pid']];
                 unset($this->process_list[$ret['pid']], $this->process_use[$ret['pid']]);
                 swoole_event_del($process->pipe);
@@ -63,7 +75,7 @@ class TaskProcess
                     });
                     $this->log->write("process {$pid} start");
                 } else {
-                    $this->log->write("restart process failed");
+                    $this->log->write("restart process failed", 'error');
                 }
             }
         });
@@ -96,6 +108,8 @@ class TaskProcess
             }
         });
 
+        echo 'easy-task run succeed: listening task1' . PHP_EOL;
+        $this->log->write('easy-task run succeed: listening task1' . PHP_EOL);
     }
 
     private function getFreeProcess()
@@ -132,6 +146,7 @@ class TaskProcess
                 $task = unserialize($data);
                 $task->trigger();
                 $this->queue->remBak($data);
+                $this->log->write($data . 'succeed');
             } catch (Exception $e) {
                 //失败压入失败队列 进行重试
                 $task->retry--;

@@ -33,7 +33,7 @@ class RedisQueue implements QueueInterface
         $redis->lrem('task1-backup', $task, 1);
     }
 
-    private function getRedis()
+    public function getRedis()
     {
         if (!$this->connected) {
             $this->redis = new Redis();

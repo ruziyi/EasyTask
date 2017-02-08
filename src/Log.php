@@ -5,7 +5,7 @@ class Log
 {
     private $file_path;
 
-    public function setPath($path = './log.txt')
+    public function __construct($path = './log.txt')
     {
         $this->file_path = $path;
     }
@@ -13,6 +13,6 @@ class Log
     public function write($msg, $level = 'info')
     {
         $msg = "[$level]". date('Y-m-d H:i:s') . ": $msg" . PHP_EOL;
-        file_put_contents($path, $msg, FILE_APPEND);
+        file_put_contents($this->file_path, $msg, FILE_APPEND);
     }
 }
