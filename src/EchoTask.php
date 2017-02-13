@@ -13,7 +13,6 @@ class EchoTask extends Task
 
     public function run()
     {
-        echo date('Y-m-d H:i:s', $this->create_at/1000) , PHP_EOL;
         echo date('Y-m-d H:i:s'), ': ', $this->msg, PHP_EOL;
     }
 }

@@ -44,17 +44,15 @@ class TaskProcess
 
     public function moveBakToQueue()
     {
-        while (true) {
-            $redis = $this->queue->getRedis();
-            $task = $redis->rPopLPush('task1-backup', 'task1');
-            if (!$task) {
-                break;
-            }
+        $redis = $this->queue->getRedis();
+        $all_uncompleted_task_ids = $redis->hkeys('all-task');
+        foreach ($all_uncompleted_task_ids as $id) {
+            $redis->lpush('task1', $id);
         }
     }
     public function run()
     {
-        //将未执行的进程移到正式队列
+        //将未执行的任务移到正式队列
         $this->moveBakToQueue();
         //监听子进程退出信号
         swoole_process::signal(SIGCHLD, function ($sig) {
@@ -95,15 +93,15 @@ class TaskProcess
         }
 
         swoole_timer_tick(20, function () {
-            $task = $this->queue->getTask();
+            $data = $this->queue->getTask();
 
-            if ($task) {
+            if ($data) {
                 $free_process = $this->getFreeProcess();
 
                 if ($free_process) {
-                    $free_process->write($task);
+                    $free_process->write($data);
                 } else {
-                    $this->queue->putTask($task, 'r');
+                    $this->queue->putTask(unserialize($data), 'r');
                 }
             }
         });
@@ -144,16 +142,19 @@ class TaskProcess
             }
             try {
                 $task = unserialize($data);
-                $task->trigger();
-                $this->queue->remBak($data);
-                $this->log->write($data . 'succeed');
+                $this->log->write($data . 'start');
+                $task->trigger(function() use ($data, $task) {
+                    $this->log->write($data . 'succeed');
+                    $queue = new \EasyTask\queue\RedisQueue();
+                    $queue->remBak($task->id);
+                });
             } catch (Exception $e) {
                 //失败压入失败队列 进行重试
                 $task->retry--;
                 if ($task->retry > 0) {
                     $this->queue->putFailedTask($task);
                 } else {
-                    $this->log->write(serialize($task) . ' failed', 'error');
+                    $this->log->write(json_encode($task) . ' failed', 'error');
                 }
             }
             $worker->write(1);

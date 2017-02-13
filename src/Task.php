@@ -1,15 +1,24 @@
 <?php
 namespace EasyTask;
+
 class Task
 {
     protected $after = 0;
     protected $create_at;
     protected $every = 0;
-    protected $retry = 3;//失败重试次数
-    public $exec_num = 0;
+    protected $retry = 3; //失败重试次数
+    protected $exec_num = 0; //需执行多少次
+    protected $cb;
+    public $id;
 
-    public function trigger()
+    public function __construct()
     {
+        $this->create_at = floor(microtime(true) * 1000);
+    }
+    public function trigger($cb)
+    {
+        $this->cb = $cb;
+
         $after = $this->after;
         $delay = $after - floor(microtime(true) * 1000) + $this->create_at;
 
@@ -18,7 +27,7 @@ class Task
         } else {
             $max_delay = 86400000;
             if ($delay > $max_delay) {
-                swoole_timer_after($max_delay, function(){
+                swoole_timer_after($max_delay, function () {
                     $this->trigger();
                 });
             } else {
@@ -36,11 +45,28 @@ class Task
                 $this->run();
                 if ($this->exec_num && --$this->exec_num <= 0) {
                     swoole_timer_clear($timer_id);
+                    $this->onTaskFinish();
                 }
+                $queue = new \EasyTask\queue\RedisQueue();
+                $obj = clone $this;
+                unset($obj->cb);
+                $queue->getRedis()->hSet('all-task', $obj->id, serialize($obj));
             });
         } else {
             $this->run();
+            $this->onTaskFinish();
+
         }
+    }
+
+    public function onTaskFinish()
+    {
+        if ($this->cb) {
+            call_user_func($this->cb);
+        }
+        unset($this->cb);
+        $queue = new \EasyTask\queue\RedisQueue();
+        $queue->remBak($this->id);
     }
 
     public function at($time)
@@ -68,12 +94,7 @@ class Task
         }
         return $this;
     }
-
-    public function __construct()
-    {
-        $this->create_at = floor(microtime(true) * 1000);
-    }
-
+    
     public function run()
     {}
 }

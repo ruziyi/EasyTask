@@ -19,25 +19,31 @@ class RedisQueue implements QueueInterface
     public function getTask()
     {
         $redis = $this->getRedis();
-        $task = $redis->lpop('task1-failed');
-        if (!$task) {
-            $task = $redis->bRpopLpush('task1', 'task1-backup', 10);
+        $task_id = $redis->lpop('task1-failed');
+        if (!$task_id) {
+            $data = $redis->bRpop('task1', 10);
+            if (!$data) {
+                return;
+            }
+            $task_id = $data[1];
         }
+        
+        $task = $redis->hget('all-task', $task_id);
         unset($redis);
         return $task;
     }
 
-    public function remBak($task)
+    public function remBak($task_id)
     {
         $redis = $this->getRedis();
-        $redis->lrem('task1-backup', $task, 1);
+        $redis->hdel('all-task', $task_id);
     }
 
     public function getRedis()
     {
         if (!$this->connected) {
             $this->redis = new Redis();
-            $ret = $this->redis->pconnect($this->host, $this->port);
+            $ret = $this->redis->connect($this->host, $this->port);
             if (!$ret) {
                 trigger_error('connect redis-server failed');
             }
@@ -48,23 +54,26 @@ class RedisQueue implements QueueInterface
 
     public function putTask($task, $type="l")
     {
-        if (!is_string($task)) {
-            $task = serialize($task);
-        }
         $redis = $this->getRedis();
+
+        if (!is_string($task)) {
+            if (!$task->id) {
+                $task->id = spl_object_hash($task);
+            }
+            $id = $task->id;
+            $redis->hset('all-task', $id, serialize($task));
+        }
         if ($type == 'l') {
-            $redis->lpush('task1', $task);
+            $redis->lpush('task1', $id);
         } else {
-            $redis->rpush('task1', $task);
+            $redis->rpush('task1', $id);
         }
     }
 
     public function putFailedTask($task)
     {
-        if (!is_string($task)) {
-            $task = serialize($task);
-        }
         $redis = $this->getRedis();
-        $redis->rpush('task1-failed', $task);
+        $redis->hSet('all-task', $task->id, serialize($task));
+        $redis->rpush('task1-failed', $task->id);
     }
 }
