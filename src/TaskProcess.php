@@ -101,7 +101,8 @@ class TaskProcess
                 if ($free_process) {
                     $free_process->write($data);
                 } else {
-                    $this->queue->putTask(unserialize($data), 'r');
+                    $task = unserialize($data);
+                    $this->queue->putTask($task->id, 'r');
                 }
             }
         });
@@ -134,7 +135,8 @@ class TaskProcess
 
     public function task_run($worker)
     {
-        swoole_event_add($worker->pipe, function ($pipe) use ($worker) {
+        $queue = new \EasyTask\queue\RedisQueue();
+        swoole_event_add($worker->pipe, function ($pipe) use ($worker, $queue) {
             $data = $worker->read();
             if ($data == 'exit') {
                 $worker->exit();
@@ -143,17 +145,15 @@ class TaskProcess
             try {
                 $task = unserialize($data);
                 $this->log->write($data . 'start');
-                $task->trigger(function() use ($data, $task) {
+                $task->trigger(function() use ($data, $task, $queue) {
                     $this->log->write($data . 'succeed');
-                    $queue = new \EasyTask\queue\RedisQueue();
-                    var_dump($task->id);
                     $queue->remBak($task->id);
                 });
             } catch (Exception $e) {
                 //失败压入失败队列 进行重试
                 $task->retry--;
                 if ($task->retry > 0) {
-                    $this->queue->putFailedTask($task);
+                    $queue->putFailedTask($task);
                 } else {
                     $this->log->write(json_encode($task) . ' failed', 'error');
                 }

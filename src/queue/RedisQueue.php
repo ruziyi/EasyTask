@@ -27,7 +27,6 @@ class RedisQueue implements QueueInterface
             }
             $task_id = $data[1];
         }
-        var_dump($task_id);        
         $task = $redis->hget('all-task', $task_id);
         return $task;
     }
@@ -35,8 +34,7 @@ class RedisQueue implements QueueInterface
     public function remBak($task_id)
     {
         $redis = $this->getRedis();
-        $ret=$redis->hdel('all-task', $task_id);
-        var_dump($ret);
+        $ret = $redis->hdel('all-task', $task_id);
     }
 
     public function getRedis()
@@ -52,7 +50,7 @@ class RedisQueue implements QueueInterface
         return $this->redis;
     }
 
-    public function putTask($task, $type="l")
+    public function putTask($task, $type = "l")
     {
         $redis = $this->getRedis();
 

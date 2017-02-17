@@ -46,6 +46,7 @@ class Task
                 if ($this->exec_num && --$this->exec_num <= 0) {
                     swoole_timer_clear($timer_id);
                     $this->onTaskFinish();
+                    return;
                 }
                 $queue = new \EasyTask\queue\RedisQueue();
                 $obj = clone $this;
