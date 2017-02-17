@@ -13,7 +13,7 @@ class TaskProcess
 
     private $config = [
         'listen_queue' => 'task1', //监听队列
-        'min_worker_num' => 1, //初始任务进程数
+        'min_worker_num' => 2, //初始任务进程数
         'max_worker_num' => 2, //最大任务进程数
         'queue' => [
             'type' => 'redis',
@@ -21,6 +21,7 @@ class TaskProcess
             'port' => 6379,
         ],
         'log_path' => './log.txt',
+        'process_name' => 'swoole_task',
     ];
 
     public function __construct($debug = false, $config = [])
@@ -35,6 +36,49 @@ class TaskProcess
         $this->queue = new $queue_class($this->config['queue']['host'], $this->config['queue']['port']);
 
         $this->log = new \EasyTask\Log($this->config['log_path']);
+        register_shutdown_function([$this, 'registerShutdown']);
+
+        cli_set_process_title($this->config['process_name']);
+    }
+
+    public function registerShutdown()
+    {
+        $error = error_get_last();
+        if (isset($error['type'])) {
+            switch ($error['type']) {
+                case E_ERROR:
+                case E_PARSE:
+                case E_CORE_ERROR:
+                case E_COMPILE_ERROR:
+                    $message = $error['message'];
+                    $file = $error['file'];
+                    $line = $error['line'];
+                    $log = "$message ($file:$line)\nStack trace:\n";
+                    $trace = debug_backtrace();
+                    foreach ($trace as $i => $t) {
+                        if (!isset($t['file'])) {
+                            $t['file'] = 'unknown';
+                        }
+                        if (!isset($t['line'])) {
+                            $t['line'] = 0;
+                        }
+                        if (!isset($t['function'])) {
+                            $t['function'] = 'unknown';
+                        }
+                        $log .= "#$i {$t['file']}({$t['line']}): ";
+                        if (isset($t['object']) and is_object($t['object'])) {
+                            $log .= get_class($t['object']) . '->';
+                        }
+                        $log .= "{$t['function']}()\n";
+                    }
+                    if (isset($_SERVER['REQUEST_URI'])) {
+                        $log .= '[QUERY] ' . $_SERVER['REQUEST_URI'];
+                    }
+                    error_log($log, 3, './error.log');
+                default:
+                    break;
+            }
+        }
     }
 
     public function set($config)
@@ -135,6 +179,7 @@ class TaskProcess
 
     public function task_run($worker)
     {
+        $worker->name('swoole_worker_' . $worker->pid);
         $queue = new \EasyTask\queue\RedisQueue();
         swoole_event_add($worker->pipe, function ($pipe) use ($worker, $queue) {
             $data = $worker->read();
@@ -145,7 +190,7 @@ class TaskProcess
             try {
                 $task = unserialize($data);
                 $this->log->write($data . 'start');
-                $task->trigger(function() use ($data, $task, $queue) {
+                $task->trigger(function () use ($data, $task, $queue) {
                     $this->log->write($data . 'succeed');
                     $queue->remBak($task->id);
                 });
