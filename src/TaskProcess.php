@@ -146,6 +146,7 @@ class TaskProcess
                 $task->trigger(function() use ($data, $task) {
                     $this->log->write($data . 'succeed');
                     $queue = new \EasyTask\queue\RedisQueue();
+                    var_dump($task->id);
                     $queue->remBak($task->id);
                 });
             } catch (Exception $e) {

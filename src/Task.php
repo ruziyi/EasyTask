@@ -65,8 +65,6 @@ class Task
             call_user_func($this->cb);
         }
         unset($this->cb);
-        $queue = new \EasyTask\queue\RedisQueue();
-        $queue->remBak($this->id);
     }
 
     public function at($time)
