@@ -50,6 +50,14 @@ class RedisQueue implements QueueInterface
         return $this->redis;
     }
 
+    public function ping()
+    {
+        $this->getRedis();
+        swoole_timer_tick(1000, function () {
+            $this->redis->ping();
+        });
+
+    }
     public function putTask($task, $type = "l")
     {
         $redis = $this->getRedis();

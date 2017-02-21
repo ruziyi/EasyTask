@@ -34,6 +34,7 @@ class TaskProcess
         $queue_class = $this->config['queue']['type'];
         $queue_class = "\\EasyTask\\queue\\" . ucfirst($queue_class) . 'Queue';
         $this->queue = new $queue_class($this->config['queue']['host'], $this->config['queue']['port']);
+        $this->queue->ping();
 
         $this->log = new \EasyTask\Log($this->config['log_path']);
         register_shutdown_function([$this, 'registerShutdown']);
@@ -181,6 +182,7 @@ class TaskProcess
     {
         $worker->name('swoole_worker_' . $worker->pid);
         $queue = new \EasyTask\queue\RedisQueue();
+        $queue->ping();
         swoole_event_add($worker->pipe, function ($pipe) use ($worker, $queue) {
             $data = $worker->read();
             if ($data == 'exit') {
